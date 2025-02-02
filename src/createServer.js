@@ -1,43 +1,59 @@
-const http = require('node:http');
-const queryParamsValidation = require('./queryParamsValidation');
-const { convertToCase } = require('./convertToCase');
+const http = require('http');
+const { convertToCase } = require('./convertToCase/convertToCase');
 
-function createServer() {
-  return http.createServer((req, res) => {
-    const splitParams = req.url.split('?');
-    const wordToConvert = splitParams[0].split('/')[1];
-    const params = new URLSearchParams(splitParams[1]);
+const createServer = () => {
+  const cases = ['SNAKE', 'KEBAB', 'CAMEL', 'PASCAL', 'UPPER'];
+
+  const server = http.createServer((req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+
+    const splitedParams = req.url.split('?');
+    const params = new URLSearchParams(splitedParams[1]);
     const toCase = params.get('toCase');
+    const text = splitedParams[0].substring(1);
 
-    const errors = queryParamsValidation(wordToConvert, toCase);
+    const errors = [];
 
-    res.setHeader('content-type', 'application/json');
-
-    if (errors.length > 0) {
-      res.statusCode = 400;
-
-      return res.end(JSON.stringify({ errors }));
+    if (!text) {
+      errors.push({
+        message: `Text to convert is required. Correct request is: "/<TEXT_TO_CONVERT>?toCase=<CASE_NAME>".`,
+      });
     }
 
-    const { originalCase, convertedText } = convertToCase(
-      wordToConvert,
-      toCase,
-    );
+    if (!toCase) {
+      errors.push({
+        message: `"toCase" query param is required. Correct request is: "/<TEXT_TO_CONVERT>?toCase=<CASE_NAME>".`,
+      });
+    } else if (!cases.includes(toCase)) {
+      errors.push({
+        message: `This case is not supported. Available cases: SNAKE, KEBAB, CAMEL, PASCAL, UPPER.`,
+      });
+    }
 
-    const payload = {
-      originalCase,
-      targetCase: toCase,
-      convertedText,
-      originalText: wordToConvert,
-    };
+    if (errors.length) {
+      res.statusCode = 400;
+      res.end(JSON.stringify({ errors }));
 
-    // eslint-disable-next-line no-console
-    console.log(payload);
+      return;
+    }
     res.statusCode = 200;
 
-    return res.end(JSON.stringify(payload));
+    const result = convertToCase(text, toCase);
+
+    res.end(
+      JSON.stringify({
+        originalCase: result.originalCase,
+        targetCase: toCase,
+        originalText: text,
+        convertedText: result.convertedText,
+      }),
+    );
   });
-}
+
+  server.close();
+
+  return server;
+};
 
 module.exports = {
   createServer,
