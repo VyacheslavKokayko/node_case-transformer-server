@@ -8,7 +8,11 @@ function queryParamsValidation(wordToConvert, toCase) {
     });
   }
 
-  if (toCase && !validCases.includes(toCase)) {
+  if (!toCase) {
+    errors.push({
+      message: 'toCase is required.',
+    });
+  } else if (!validCases.includes(toCase)) {
     errors.push({
       message: `This case is not supported. Available cases: ${validCases.join(', ')}.`,
     });
